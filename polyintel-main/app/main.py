@@ -114,15 +114,11 @@ async def get_polymarket_markets(limit: int = 50) -> List[Dict]:
 
 
 def generate_audio_briefing(text: str, voice_id: str = "21m00Tcm4TlvDq8ikWAM") -> Optional[str]:
-    """Generate audio briefing using ElevenLabs"""
+    """Generate audio briefing using Hathora, ElevenLabs, or fallback TTS"""
     try:
         # Create audio directory if it doesn't exist
         audio_dir = Path("./audio")
         audio_dir.mkdir(exist_ok=True)
-
-        if not elevenlabs_client:
-            print("✗ ElevenLabs client not available - skipping audio generation")
-            return None
 
         if not text or len(text.strip()) == 0:
             print("✗ Empty text provided for audio generation")
@@ -130,50 +126,36 @@ def generate_audio_briefing(text: str, voice_id: str = "21m00Tcm4TlvDq8ikWAM") -
 
         print(f"🎵 Generating audio for text (length: {len(text)} chars)...")
 
-        # Generate audio with ElevenLabs - use the correct method
-        try:
-            # Try newer API first
-            audio_generator = elevenlabs_client.text_to_speech.convert(
-                voice_id=voice_id,
-                text=text,
-                model_id="eleven_monolingual_v1",
-            )
-        except Exception as e:
-            print(f"⚠ Model eleven_monolingual_v1 failed, trying default: {e}")
-            # Fallback to default model
-            audio_generator = elevenlabs_client.text_to_speech.convert(
-                voice_id=voice_id,
-                text=text,
-            )
-
-        # Save audio to file with unique ID
+        # Use the unified audio module (supports Hathora, ElevenLabs, and gTTS)
+        from spoon.audio import generate_briefing
+        
+        # Generate audio with unique ID
         audio_id = random.randint(1000000, 9999999)
         audio_filename = f"briefing_{audio_id}.mp3"
         audio_path = audio_dir / audio_filename
 
-        print(f"💾 Writing audio to {audio_path}...")
+        # Generate audio using the unified module (tries Hathora first, then ElevenLabs, then gTTS)
+        result_path = generate_briefing(
+            text=text,
+            filename=str(audio_path),
+            voice_id=voice_id,
+            model_id=None  # Let the module choose based on available services
+        )
 
-        # Write audio chunks to file
-        bytes_written = 0
-        with open(audio_path, "wb") as f:
-            for chunk in audio_generator:
-                if chunk:
-                    f.write(chunk)
-                    bytes_written += len(chunk)
-
-        # Verify file was created and has content
-        file_size = audio_path.stat().st_size if audio_path.exists() else 0
-        print(f"📊 File size: {file_size} bytes (written: {bytes_written} bytes)")
-
-        if file_size > 500:  # At least 500 bytes of audio
-            audio_url = f"http://localhost:8000/audio/{audio_filename}"
-            print(f"✓ Audio file created successfully: {audio_filename} ({file_size} bytes)")
-            print(f"✓ Audio URL: {audio_url}")
-            return audio_url
+        if result_path and Path(result_path).exists():
+            file_size = Path(result_path).stat().st_size
+            if file_size > 500:  # At least 500 bytes of audio
+                audio_url = f"http://localhost:8000/audio/{audio_filename}"
+                print(f"✓ Audio file created successfully: {audio_filename} ({file_size} bytes)")
+                print(f"✓ Audio URL: {audio_url}")
+                return audio_url
+            else:
+                print(f"✗ Audio file too small or empty: {file_size} bytes")
+                if Path(result_path).exists():
+                    Path(result_path).unlink()
+                return None
         else:
-            print(f"✗ Audio file too small or empty: {file_size} bytes")
-            if audio_path.exists():
-                audio_path.unlink()
+            print("✗ Audio generation returned no file")
             return None
 
     except Exception as e:
@@ -712,8 +694,8 @@ async def analyze_signal(request: AnalysisRequest):
 
         # Generate audio briefing if requested
         audio_briefing = None
-        print(f"📋 Request use_manus: {request.use_manus}, ElevenLabs client available: {elevenlabs_client is not None}")
-        if request.use_manus and elevenlabs_client:
+        print(f"📋 Request use_manus: {request.use_manus}")
+        if request.use_manus:
             print(f"🎙️ Generating audio briefing (reasoning length: {len(reasoning)} chars)...")
             audio_briefing = generate_audio_briefing(reasoning)
             if audio_briefing:
@@ -721,10 +703,7 @@ async def analyze_signal(request: AnalysisRequest):
             else:
                 print("✗ Audio generation returned None")
         else:
-            if not request.use_manus:
-                print("⚠ use_manus is False or not set")
-            if not elevenlabs_client:
-                print("⚠ ElevenLabs client is not available")
+            print("⚠ use_manus is False or not set - skipping audio generation")
 
         response_data = {
             "state": {
