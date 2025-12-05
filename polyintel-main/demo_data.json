@@ -1,0 +1,119 @@
+{
+  "meta": {
+    "generated_at": "2025-11-23T00:00:00Z",
+    "base_url": "http://localhost:8000"
+  },
+  "endpoints": {
+    "health": "/health",
+    "keys": "/health/keys",
+    "sentiment": "/polycaster/sentiment",
+    "analyze_slug": "/polycaster/analyze/slug",
+    "podcast": "/polycaster/podcast",
+    "podcast_variants": "/polycaster/podcast/variants",
+    "polycop_inspect": "/polycop/inspect",
+    "polycop_monitor": "/polycop/monitor",
+    "trending": "/polymarket/trending",
+    "dashboard": "/dashboard",
+    "chat": "/chat",
+    "whale_summary": "/whale/polywhaler/summary",
+    "whale_crossref": "/whale/crossref"
+  },
+  "strip": [
+    {
+      "label": "ETH NOV 2025",
+      "slug": "what-price-will-ethereum-hit-in-november-2025",
+      "question": "What price will Ethereum hit in November 2025?",
+      "yes_probability": 0.50,
+      "volume24hr": 0.0
+    },
+    {
+      "label": "ETH > 1700",
+      "slug": "will-eth-be-above-1700-on-march-24",
+      "question": "Will $ETH be above $1700 on March 24?",
+      "yes_probability": 1.00,
+      "volume24hr": 0.0
+    },
+    {
+      "label": "BIDEN 43%",
+      "slug": "will-joe-bidens-fivethirtyeight-approval-rating-be-43-or-higher-on-december-29",
+      "question": "Will Joe Biden's FiveThirtyEight approval rating be 43.0% or higher on December 29?",
+      "yes_probability": 1.00,
+      "volume24hr": 0.0
+    }
+  ],
+  "dashboard": {
+    "market_id": "what-price-will-ethereum-hit-in-november-2025",
+    "risk": {
+      "inputs": {
+        "odds": 0.50,
+        "signed_odds": 0.0,
+        "sentiment": 0.70,
+        "gap": 0.70,
+        "liquidity": 100.015011,
+        "volume24hr": 0.0,
+        "avg_volume24hr": 0.0,
+        "news_count": 2,
+        "tweets_count": 3,
+        "posts_count": 2
+      },
+      "tools": {
+        "wash_trading_score": 0.0,
+        "volume_anomaly_score": 0.0,
+        "pump_dump_risk": 1.0,
+        "news_price_discrepancy": 0.0,
+        "health_score": 0.75
+      }
+    },
+    "inspect": {
+      "alerts": [
+        { "type": "narrative_odds_divergence", "value": 0.70, "severity": 0.70 },
+        { "type": "low_liquidity", "value": 100.015011, "severity": 0.40 }
+      ],
+      "recommendation": { "action": "FADE_MARKET", "direction": "YES" }
+    }
+  },
+  "audio": {
+    "long": {
+      "query": "elevenlabs test audio",
+      "audio_url": "/polyflow/audio/podcast_briefing_elevenlabs_test_audio_1763908619.mp3"
+    },
+    "short": {
+      "query": "elevenlabs test audio",
+      "audio_url": "/polyflow/audio/podcast_briefing_elevenlabs_test_audio_short_1763908629.mp3"
+    },
+    "single": {
+      "query": "system regression podcast",
+      "audio_url": "/polyflow/audio/podcast_briefing_system_regression_podcast_1763909159.mp3"
+    }
+  },
+  "sentiment": {
+    "query": "ethereum price november 2025",
+    "status": "success",
+    "sentiment_score": 0.70,
+    "metrics": { "total_items": 7, "tweet_count": 3, "post_count": 2, "news_count": 2, "source_diversity": 0.75 },
+    "summary": "Positive crowd sentiment with limited but diverse sources (Twitter, Reddit, news)."
+  },
+  "whale": {
+    "polywhaler": { "total_volume": 0.0, "buy_orders": 0.0, "sell_orders": 0.0, "avg_trade_size": 0.0 },
+    "crossref": {
+      "event_id": "70055",
+      "holders_examples": 5
+    }
+  },
+  "monitor": [
+    {
+      "slug": "will-eth-be-above-1550-on-march-17",
+      "question": "Will $ETH be above $1550 on March 17?",
+      "odds": ["1.0"],
+      "alerts": [ { "type": "narrative_odds_divergence", "value": 0.70 } ],
+      "recommendation": { "action": "FADE_MARKET", "direction": "YES" }
+    },
+    {
+      "slug": "will-the-ethereum-merge-eip-3675-occur-by-october-1-2022",
+      "question": "Will the Ethereum Merge (EIP-3675) occur by October 1, 2022?",
+      "odds": ["1.0"],
+      "alerts": [ { "type": "narrative_odds_divergence", "value": 0.70 } ],
+      "recommendation": { "action": "FADE_MARKET", "direction": "YES" }
+    }
+  ]
+}

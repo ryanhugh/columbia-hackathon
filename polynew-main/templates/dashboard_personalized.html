@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PolyEdge - Your Portfolio's Edge Map</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #0a0e27;
+            color: #e0e0e0;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #1a1f3a 0%, #2d3561 100%);
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }
+        
+        .header .subtitle {
+            color: #a0a0a0;
+            font-size: 1.1em;
+        }
+        
+        /* Section 1: Portfolio Overview */
+        .portfolio-overview {
+            background: #1a1f3a;
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+        }
+        
+        .section-title {
+            font-size: 1.8em;
+            color: #fff;
+            margin-bottom: 25px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .holdings-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+        
+        .holding-card {
+            background: #252b4a;
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid #3a4166;
+            transition: transform 0.2s, border-color 0.2s;
+        }
+        
+        .holding-card:hover {
+            transform: translateY(-5px);
+            border-color: #667eea;
+        }
+        
+        .holding-symbol {
+            font-size: 1.8em;
+            font-weight: bold;
+            color: #fff;
+            margin-bottom: 8px;
+        }
+        
+        .holding-weight {
+            font-size: 1.2em;
+            color: #a0a0a0;
+            margin-bottom: 15px;
+        }
+        
+        .edge-intensity {
+            margin-top: 15px;
+        }
+        
+        .edge-intensity-label {
+            font-size: 0.85em;
+            color: #a0a0a0;
+            margin-bottom: 8px;
+        }
+        
+        .edge-bar {
+            height: 8px;
+            background: #2a2f4a;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        
+        .edge-bar-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.3s;
+        }
+        
+        .edge-bar-fill.high {
+            background: linear-gradient(90deg, #ef4444 0%, #f59e0b 100%);
+            width: 85%;
+        }
+        
+        .edge-bar-fill.medium {
+            background: linear-gradient(90deg, #f59e0b 0%, #eab308 100%);
+            width: 60%;
+        }
+        
+        .edge-bar-fill.low {
+            background: linear-gradient(90deg, #10b981 0%, #34d399 100%);
+            width: 35%;
+        }
+        
+        .edge-intensity-text {
+            margin-top: 5px;
+            font-size: 0.9em;
+            font-weight: bold;
+        }
+        
+        .edge-intensity-text.high { color: #ef4444; }
+        .edge-intensity-text.medium { color: #f59e0b; }
+        .edge-intensity-text.low { color: #10b981; }
+        
+        /* Section 2: Markets That Matter */
+        .markets-section {
+            background: #1a1f3a;
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+        }
+        
+        .markets-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .markets-table th {
+            text-align: left;
+            padding: 15px;
+            color: #a0a0a0;
+            font-weight: 600;
+            border-bottom: 2px solid #3a4166;
+        }
+        
+        .markets-table td {
+            padding: 15px;
+            border-bottom: 1px solid #2a2f4a;
+        }
+        
+        .markets-table tr:hover {
+            background: #252b4a;
+        }
+        
+        .rank {
+            font-weight: bold;
+            color: #667eea;
+            font-size: 1.2em;
+        }
+        
+        .market-question {
+            color: #fff;
+            font-weight: 500;
+            max-width: 400px;
+        }
+        
+        .related-asset {
+            color: #667eea;
+            font-weight: bold;
+        }
+        
+        .edgescore {
+            font-size: 1.3em;
+            font-weight: bold;
+        }
+        
+        .edgescore.high { color: #ef4444; }
+        .edgescore.medium { color: #f59e0b; }
+        .edgescore.low { color: #10b981; }
+        
+        .lead-time {
+            color: #a0a0a0;
+        }
+        
+        .alert-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.85em;
+            font-weight: bold;
+        }
+        
+        .alert-badge.live {
+            background: #ef4444;
+            color: white;
+        }
+        
+        .alert-badge.spike {
+            background: #f59e0b;
+            color: white;
+        }
+        
+        .alert-badge.elevated {
+            background: #10b981;
+            color: white;
+        }
+        
+        .explore-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: opacity 0.2s;
+        }
+        
+        .explore-btn:hover {
+            opacity: 0.9;
+        }
+        
+        /* Relationship Explorer Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 1000;
+            overflow-y: auto;
+        }
+        
+        .modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal-content {
+            background: #1a1f3a;
+            border-radius: 16px;
+            padding: 40px;
+            max-width: 1200px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        
+        .modal-title {
+            font-size: 1.8em;
+            color: #fff;
+        }
+        
+        .close-btn {
+            background: #3a4166;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.2em;
+        }
+        
+        .close-btn:hover {
+            background: #4a5176;
+        }
+        
+        .chart-container {
+            background: #252b4a;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+            height: 300px;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        
+        .stat-card {
+            background: #252b4a;
+            padding: 20px;
+            border-radius: 12px;
+        }
+        
+        .stat-label {
+            color: #a0a0a0;
+            font-size: 0.9em;
+            margin-bottom: 8px;
+        }
+        
+        .stat-value {
+            color: #fff;
+            font-size: 1.8em;
+            font-weight: bold;
+        }
+        
+        /* Event Calendar */
+        .calendar-section {
+            background: #1a1f3a;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+        }
+        
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .calendar-day {
+            background: #252b4a;
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid #3a4166;
+        }
+        
+        .calendar-date {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+        
+        .calendar-event {
+            background: #2a2f4a;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+        
+        .event-name {
+            color: #fff;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+        
+        .event-markets {
+            color: #a0a0a0;
+            font-size: 0.85em;
+            margin-bottom: 5px;
+        }
+        
+        .event-impact {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-size: 0.8em;
+            font-weight: bold;
+        }
+        
+        .event-impact.high { background: #ef4444; color: white; }
+        .event-impact.medium { background: #f59e0b; color: white; }
+        .event-impact.low { background: #10b981; color: white; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔷 Your Portfolio's Edge Map</h1>
+            <div class="subtitle">Prediction markets that statistically lead your holdings</div>
+        </div>
+        
+        <!-- Section 1: Portfolio Overview -->
+        <div class="portfolio-overview">
+            <h2 class="section-title">📊 Portfolio Overview</h2>
+            <div class="holdings-grid">
+                {% for symbol, data in portfolio.holdings.items() %}
+                <div class="holding-card">
+                    <div class="holding-symbol">{{ symbol }}</div>
+                    <div class="holding-weight">{{ "%.0f"|format(data.weight * 100) }}%</div>
+                    <div class="edge-intensity">
+                        <div class="edge-intensity-label">Edge Intensity</div>
+                        <div class="edge-bar">
+                            <div class="edge-bar-fill {{ edge_intensities.get(symbol, 'low') }}"></div>
+                        </div>
+                        <div class="edge-intensity-text {{ edge_intensities.get(symbol, 'low') }}">
+                            {{ edge_intensities.get(symbol, 'low')|upper }}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        
+        <!-- Section 2: Markets That Matter Most -->
+        <div class="markets-section">
+            <h2 class="section-title">🎯 Markets That Matter Most Right Now</h2>
+            <table class="markets-table">
+                <thead>
+                    <tr>
+                        <th>Rank</th>
+                        <th>Market</th>
+                        <th>Related Asset</th>
+                        <th>EdgeScore</th>
+                        <th>Lead Time</th>
+                        <th>Alert</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for market in markets_that_matter[:10] %}
+                    <tr>
+                        <td class="rank">{{ loop.index }}</td>
+                        <td class="market-question">{{ market.market_question[:60] }}...</td>
+                        <td class="related-asset">{{ market.related_asset }}</td>
+                        <td>
+                            <span class="edgescore {% if market.edgescore >= 70 %}high{% elif market.edgescore >= 50 %}medium{% else %}low{% endif %}">
+                                {{ market.edgescore }}
+                            </span>
+                        </td>
+                        <td class="lead-time">{{ market.lead_time_hours }} hrs</td>
+                        <td>
+                            {% if market.alert_status == 'live' %}
+                            <span class="alert-badge live">🔥 Live</span>
+                            {% elif market.alert_status == 'spike' %}
+                            <span class="alert-badge spike">⚠️ Spike</span>
+                            {% elif market.alert_status == 'elevated' %}
+                            <span class="alert-badge elevated">🔍 Elevated</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <button class="explore-btn" onclick="openRelationshipExplorer('{{ market.market_id }}', '{{ market.related_asset }}')">
+                                Explore
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Relationship Explorer Modal -->
+        <div id="relationshipModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 class="modal-title" id="modalTitle">Relationship Explorer</h2>
+                    <button class="close-btn" onclick="closeRelationshipExplorer()">×</button>
+                </div>
+                <div id="modalBody">
+                    <!-- Content loaded dynamically -->
+                </div>
+            </div>
+        </div>
+        
+        <!-- Section 3: Event Calendar -->
+        <div class="calendar-section">
+            <h2 class="section-title">📅 Event Calendar for Your Holdings</h2>
+            <div class="calendar-grid">
+                {% for event in upcoming_events %}
+                <div class="calendar-day">
+                    <div class="calendar-date">{{ event.date }}</div>
+                    <div class="calendar-event">
+                        <div class="event-name">{{ event.name }}</div>
+                        <div class="event-markets">Markets: {{ event.markets|join(', ') }}</div>
+                        <div>
+                            <span class="event-impact {{ event.impact }}">{{ event.impact|upper }}</span>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        function openRelationshipExplorer(marketId, asset) {
+            document.getElementById('relationshipModal').classList.add('active');
+            document.getElementById('modalTitle').textContent = `Relationship: ${asset} ↔ Market`;
+            
+            // Load relationship data (would fetch from API)
+            document.getElementById('modalBody').innerHTML = `
+                <div class="chart-container">
+                    <p style="color: #a0a0a0; text-align: center; padding-top: 120px;">
+                        Chart: PM Probability vs ${asset} Price<br>
+                        (Historical correlation visualization)
+                    </p>
+                </div>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">Correlation</div>
+                        <div class="stat-value">0.73</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Lead Time</div>
+                        <div class="stat-value">8 hrs</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Success Rate</div>
+                        <div class="stat-value">83%</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Sample Size</div>
+                        <div class="stat-value">145</div>
+                    </div>
+                </div>
+                <div style="margin-top: 30px;">
+                    <h3 style="color: #fff; margin-bottom: 15px;">Historical Performance</h3>
+                    <p style="color: #a0a0a0; line-height: 1.6;">
+                        12 significant PM moves → 10 times ${asset} followed within 12 hours.
+                    </p>
+                </div>
+                <div style="margin-top: 30px;">
+                    <h3 style="color: #fff; margin-bottom: 15px;">Strategies</h3>
+                    <div style="display: flex; gap: 15px;">
+                        <button class="explore-btn" style="flex: 1;">Buy dips when prob rises sharply</button>
+                        <button class="explore-btn" style="flex: 1;">Fade markets when prob drops too fast</button>
+                    </div>
+                </div>
+            `;
+        }
+        
+        function closeRelationshipExplorer() {
+            document.getElementById('relationshipModal').classList.remove('active');
+        }
+        
+        // Close modal on outside click
+        document.getElementById('relationshipModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeRelationshipExplorer();
+            }
+        });
+    </script>
+</body>
+</html>
+

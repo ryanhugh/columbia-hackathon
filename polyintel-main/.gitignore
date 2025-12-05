@@ -1,0 +1,9 @@
+/.venv/
+__pycache__/
+.DS_Store
+*.mp3
+polyintel-frontend-complete.tar.gz
+spoon-core-vendored-backup/
+.env
+/venv/
+*.mp3
