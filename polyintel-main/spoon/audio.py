@@ -22,6 +22,11 @@ def _generate_with_hathora(text: str, filename: str, model: Optional[str] = None
             print("⚠ Hathora API key not found")
             return None
         
+        # Get Hathora model from environment or use provided/default
+        # User mentioned they have 3 TTS models enabled - we'll try to use the first available
+        hathora_model = model or os.getenv("HATHORA_MODEL_ID") or os.getenv("HATHORA_TTS_MODEL")
+        hathora_voice = voice or os.getenv("HATHORA_VOICE_ID")
+        
         # Hathora API endpoints (adjust based on actual API documentation)
         base_url = os.getenv("HATHORA_API_URL", "https://api.hathora.dev")
         endpoint = f"{base_url}/v1/tts"  # Common pattern, may need adjustment
@@ -50,11 +55,17 @@ def _generate_with_hathora(text: str, filename: str, model: Optional[str] = None
             "text": text,
         }
         
-        # Add optional parameters if provided
-        if model:
-            payload["model"] = model
-        if voice:
-            payload["voice"] = voice
+        # Add model parameter (required for Hathora)
+        if hathora_model:
+            payload["model"] = hathora_model
+            print(f"   Using Hathora model: {hathora_model}")
+        else:
+            print("   ⚠ No Hathora model specified - trying without model parameter")
+        
+        # Add voice parameter if provided
+        if hathora_voice:
+            payload["voice"] = hathora_voice
+            print(f"   Using Hathora voice: {hathora_voice}")
         
         print(f"🎙️ Generating audio with Hathora TTS...")
         
