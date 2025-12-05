@@ -4,6 +4,8 @@ A dual-project repository containing two complementary Polymarket intelligence p
 
 ## 📦 Projects Overview
 
+Site: https://polyintel.manus.space
+
 This repository contains two distinct but complementary projects:
 
 ### 1. **PolyIntel** - AI-Powered Market Intelligence Platform
