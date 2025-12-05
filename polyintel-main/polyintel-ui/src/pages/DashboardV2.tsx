@@ -15,6 +15,7 @@ import {
 import APIService, { SignalResponse } from '../services/api';
 import { useSignalStore } from '../store/signals';
 import ErrorAlert from '../components/ErrorAlert';
+import Chatbot from '../components/Chatbot';
 
 interface FeaturedMarket {
   id: string;
@@ -1012,6 +1013,14 @@ export default function DashboardV2() {
           </div>
         </div>
       </div>
+      
+      {/* Chatbot Component */}
+      <Chatbot 
+        context={{
+          selectedMarket: selectedMarket,
+          analysis: analysis
+        }}
+      />
     </div>
   );
 }

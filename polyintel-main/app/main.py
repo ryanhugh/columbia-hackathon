@@ -52,6 +52,15 @@ class AnalysisRequest(BaseModel):
     category: Optional[str] = "crypto"
     use_manus: Optional[bool] = False
 
+class ChatRequest(BaseModel):
+    question: str
+    context: Optional[Dict] = None  # Dashboard context (markets, analysis, etc.)
+    use_voice: Optional[bool] = False  # Return voice response
+
+class VoiceInputRequest(BaseModel):
+    audio_data: str  # Base64 encoded audio
+    context: Optional[Dict] = None
+
 
 # ============= HELPER FUNCTIONS =============
 
@@ -114,15 +123,11 @@ async def get_polymarket_markets(limit: int = 50) -> List[Dict]:
 
 
 def generate_audio_briefing(text: str, voice_id: str = "21m00Tcm4TlvDq8ikWAM") -> Optional[str]:
-    """Generate audio briefing using ElevenLabs"""
+    """Generate audio briefing using Hathora, ElevenLabs, or fallback TTS"""
     try:
         # Create audio directory if it doesn't exist
         audio_dir = Path("./audio")
         audio_dir.mkdir(exist_ok=True)
-
-        if not elevenlabs_client:
-            print("✗ ElevenLabs client not available - skipping audio generation")
-            return None
 
         if not text or len(text.strip()) == 0:
             print("✗ Empty text provided for audio generation")
@@ -130,50 +135,36 @@ def generate_audio_briefing(text: str, voice_id: str = "21m00Tcm4TlvDq8ikWAM") -
 
         print(f"🎵 Generating audio for text (length: {len(text)} chars)...")
 
-        # Generate audio with ElevenLabs - use the correct method
-        try:
-            # Try newer API first
-            audio_generator = elevenlabs_client.text_to_speech.convert(
-                voice_id=voice_id,
-                text=text,
-                model_id="eleven_monolingual_v1",
-            )
-        except Exception as e:
-            print(f"⚠ Model eleven_monolingual_v1 failed, trying default: {e}")
-            # Fallback to default model
-            audio_generator = elevenlabs_client.text_to_speech.convert(
-                voice_id=voice_id,
-                text=text,
-            )
-
-        # Save audio to file with unique ID
+        # Use the unified audio module (supports Hathora, ElevenLabs, and gTTS)
+        from spoon.audio import generate_briefing
+        
+        # Generate audio with unique ID
         audio_id = random.randint(1000000, 9999999)
         audio_filename = f"briefing_{audio_id}.mp3"
         audio_path = audio_dir / audio_filename
 
-        print(f"💾 Writing audio to {audio_path}...")
+        # Generate audio using the unified module (tries Hathora first, then ElevenLabs, then gTTS)
+        result_path = generate_briefing(
+            text=text,
+            filename=str(audio_path),
+            voice_id=voice_id,
+            model_id=None  # Let the module choose based on available services
+        )
 
-        # Write audio chunks to file
-        bytes_written = 0
-        with open(audio_path, "wb") as f:
-            for chunk in audio_generator:
-                if chunk:
-                    f.write(chunk)
-                    bytes_written += len(chunk)
-
-        # Verify file was created and has content
-        file_size = audio_path.stat().st_size if audio_path.exists() else 0
-        print(f"📊 File size: {file_size} bytes (written: {bytes_written} bytes)")
-
-        if file_size > 500:  # At least 500 bytes of audio
-            audio_url = f"http://localhost:8000/audio/{audio_filename}"
-            print(f"✓ Audio file created successfully: {audio_filename} ({file_size} bytes)")
-            print(f"✓ Audio URL: {audio_url}")
-            return audio_url
+        if result_path and Path(result_path).exists():
+            file_size = Path(result_path).stat().st_size
+            if file_size > 500:  # At least 500 bytes of audio
+                audio_url = f"http://localhost:8000/audio/{audio_filename}"
+                print(f"✓ Audio file created successfully: {audio_filename} ({file_size} bytes)")
+                print(f"✓ Audio URL: {audio_url}")
+                return audio_url
+            else:
+                print(f"✗ Audio file too small or empty: {file_size} bytes")
+                if Path(result_path).exists():
+                    Path(result_path).unlink()
+                return None
         else:
-            print(f"✗ Audio file too small or empty: {file_size} bytes")
-            if audio_path.exists():
-                audio_path.unlink()
+            print("✗ Audio generation returned no file")
             return None
 
     except Exception as e:
@@ -712,8 +703,8 @@ async def analyze_signal(request: AnalysisRequest):
 
         # Generate audio briefing if requested
         audio_briefing = None
-        print(f"📋 Request use_manus: {request.use_manus}, ElevenLabs client available: {elevenlabs_client is not None}")
-        if request.use_manus and elevenlabs_client:
+        print(f"📋 Request use_manus: {request.use_manus}")
+        if request.use_manus:
             print(f"🎙️ Generating audio briefing (reasoning length: {len(reasoning)} chars)...")
             audio_briefing = generate_audio_briefing(reasoning)
             if audio_briefing:
@@ -721,10 +712,7 @@ async def analyze_signal(request: AnalysisRequest):
             else:
                 print("✗ Audio generation returned None")
         else:
-            if not request.use_manus:
-                print("⚠ use_manus is False or not set")
-            if not elevenlabs_client:
-                print("⚠ ElevenLabs client is not available")
+            print("⚠ use_manus is False or not set - skipping audio generation")
 
         response_data = {
             "state": {
@@ -935,6 +923,301 @@ async def polycop_risk_analysis(request: AnalysisRequest):
     except Exception as e:
         print(f"Risk analysis error: {e}")
         raise HTTPException(status_code=500, detail=f"Analysis error: {str(e)}")
+
+
+@app.post("/chatbot/ask")
+async def chatbot_ask(request: ChatRequest):
+    """Intelligent chatbot that answers questions based on dashboard data"""
+    try:
+        # Get current dashboard context
+        markets = await get_polymarket_markets(limit=20)
+        
+        # Build market data JSON for the AI (only real data, no hallucinations)
+        market_data = []
+        for m in markets[:20]:  # Limit to top 20 for context
+            try:
+                odds = 0.5
+                if "outcomePrices" in m:
+                    outcome_prices = m["outcomePrices"]
+                    if isinstance(outcome_prices, str):
+                        try:
+                            outcome_prices = json.loads(outcome_prices)
+                        except:
+                            outcome_prices = None
+                    if isinstance(outcome_prices, list) and len(outcome_prices) > 0:
+                        odds = float(outcome_prices[0])
+                
+                market_data.append({
+                    "slug": m.get("slug", ""),
+                    "question": m.get("question", m.get("title", "")),
+                    "probability": round(odds * 100, 1),
+                    "category": m.get("category", "OTHER"),
+                    "volume_24h": m.get("volume24hrClob", 0) or m.get("volume24hrAmm", 0) or 0
+                })
+            except:
+                continue
+        
+        # Add selected market if available
+        selected_market_data = None
+        if request.context and 'selected_market' in request.context:
+            market = request.context['selected_market']
+            selected_market_data = {
+                "slug": market.get('slug', ''),
+                "title": market.get('title', market.get('slug', '')),
+                "odds": market.get('odds', 0.5),
+                "probability": round(market.get('odds', 0.5) * 100, 1)
+            }
+        
+        # Create context JSON string
+        context_json = json.dumps({
+            "markets": market_data,
+            "selected_market": selected_market_data,
+            "total_markets": len(markets)
+        }, indent=2)
+        
+        # EventCast AI System Prompt - Voice-Optimized, Concise, Data-Driven
+        system_prompt = """You are EventCast AI, a voice-based prediction market explainer.
+
+Your job is to interpret the user's spoken question and respond with a brief, clear verbal explanation based ONLY on the market data provided to you in the request.
+
+CRITICAL RULES:
+
+1. NEVER hallucinate markets, correlations, numbers, or assets. Use ONLY the markets passed into your prompt JSON.
+
+2. Keep every answer extremely concise. Maximum: 1–2 sentences, spoken style, no filler.
+
+3. Focus on what the user is asking right now. Give only the relevant market name(s), probability, and a simple implication.
+
+4. If the question is unclear, ask a clarifying question. Example: "Which market would you like me to explain?"
+
+5. No long explanations, no multi-paragraph insights. This is a real-time voice assistant, not a research report.
+
+6. Never repeat the entire market list. Only mention the specific markets relevant to the user's question.
+
+7. If the user asks something outside the domain, redirect. Example: "I can explain market probabilities and what they mean. Which event do you want to explore?"
+
+8. The tone must be direct, analytical, and spoken aloud. No disclaimers, no formal writing, no academic structure.
+
+9. Always assume the user wants immediate insight or clarification.
+
+Response Format:
+- Sentence 1: Direct answer
+- Sentence 2: Probability & simple implication
+
+Example: "CPI Above Forecast is the most active market at 58 percent. Rising CPI expectations usually signal macro uncertainty."
+
+Your mission: Take the provided market JSON, interpret the question, and return the shortest useful verbal answer possible — nothing more."""
+
+        # Try to use available LLM providers - Claude first for quality
+        response_text = None
+        audio_url = None
+        
+        # Try Claude (Anthropic) first for better quality
+        try:
+            anthropic_key = os.getenv("ANTHROPIC_API_KEY")
+            if anthropic_key:
+                from anthropic import AsyncAnthropic
+                client = AsyncAnthropic(api_key=anthropic_key)
+                # Format user message with market data
+                user_message = f"""Market Data (JSON):
+{context_json}
+
+User Question: {request.question}
+
+Remember: Use ONLY the markets in the JSON above. Keep response to 1-2 sentences maximum. Direct, spoken style."""
+                
+                response = await client.messages.create(
+                    model="claude-3-haiku-20240307",  # Claude model (fast and efficient)
+                    max_tokens=200,  # Reduced for concise responses
+                    system=system_prompt,
+                    messages=[{"role": "user", "content": user_message}]
+                )
+                response_text = response.content[0].text
+                print("✓ Using Claude API for high-quality response")
+        except Exception as e:
+            print(f"Claude API error: {e}")
+        
+        # Fallback to OpenAI if Claude fails
+        if not response_text:
+            try:
+                openai_key = os.getenv("OPENAI_API_KEY")
+                if openai_key:
+                    from openai import AsyncOpenAI
+                    client = AsyncOpenAI(api_key=openai_key)
+                    # Format user message with market data
+                    user_message = f"""Market Data (JSON):
+{context_json}
+
+User Question: {request.question}
+
+Remember: Use ONLY the markets in the JSON above. Keep response to 1-2 sentences maximum. Direct, spoken style."""
+                    
+                    messages = [
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_message}
+                    ]
+                    response = await client.chat.completions.create(
+                        model="gpt-4o-mini",
+                        messages=messages,
+                        temperature=0.3,  # Lower temperature for more focused responses
+                        max_tokens=150  # Reduced for concise responses
+                    )
+                    response_text = response.choices[0].message.content.strip()
+                    print("✓ Using OpenAI API (fallback)")
+            except Exception as e:
+                print(f"OpenAI error: {e}")
+        
+        # Final fallback: simple rule-based responses
+        if not response_text:
+            response_text = _generate_fallback_response(request.question, markets, request.context)
+        
+        # Generate voice response if requested - always use Hathora for chatbot
+        if request.use_voice and response_text:
+            print("🎙️ Generating voice response with Hathora TTS...")
+            audio_url = generate_audio_briefing(response_text)
+            if audio_url:
+                print(f"✓ Voice response generated: {audio_url}")
+        
+        return {
+            "response": response_text,
+            "audio_url": audio_url,
+            "context_used": {
+                "markets_count": len(markets),
+                "has_selected_market": bool(request.context and request.context.get('selected_market')),
+                "has_analysis": bool(request.context and request.context.get('analysis'))
+            }
+        }
+        
+    except Exception as e:
+        print(f"Chatbot error: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Chatbot error: {str(e)}")
+
+
+def _generate_fallback_response(question: str, markets: List[Dict], context: Optional[Dict]) -> str:
+    """Fallback response generator when LLM is not available - EventCast style, concise"""
+    question_lower = question.lower()
+    
+    # Extract market data for fallback
+    if markets:
+        top_market = markets[0]
+        try:
+            odds = 0.5
+            if "outcomePrices" in top_market:
+                outcome_prices = top_market["outcomePrices"]
+                if isinstance(outcome_prices, str):
+                    try:
+                        outcome_prices = json.loads(outcome_prices)
+                    except:
+                        pass
+                if isinstance(outcome_prices, list) and len(outcome_prices) > 0:
+                    odds = float(outcome_prices[0])
+            prob = round(odds * 100, 1)
+            market_name = top_market.get('question', top_market.get('slug', 'Unknown'))[:60]
+        except:
+            prob = 50
+            market_name = "markets"
+    else:
+        prob = 50
+        market_name = "markets"
+    
+    # EventCast style: 1-2 sentences, direct, spoken
+    if any(word in question_lower for word in ["market", "odds", "price", "prediction", "what", "which"]):
+        if markets and len(markets) > 0:
+            return f"{market_name} is at {prob} percent probability. Which specific market would you like me to explain?"
+        return "I can explain market probabilities. Which event do you want to explore?"
+    
+    elif any(word in question_lower for word in ["trending", "popular", "hot", "active"]):
+        if markets and len(markets) >= 3:
+            return f"Top active market: {market_name} at {prob} percent. Want details on this or another market?"
+        return "Which market would you like me to explain?"
+    
+    elif any(word in question_lower for word in ["sentiment", "vibe", "feeling"]):
+        return "I analyze market probabilities from real data. Which market's sentiment are you interested in?"
+    
+    elif any(word in question_lower for word in ["help", "how", "what can"]):
+        return "I explain prediction market probabilities. Ask about a specific market or event."
+    
+    else:
+        return "I can explain market probabilities and what they mean. Which event do you want to explore?"
+
+
+@app.post("/chatbot/voice-input")
+async def chatbot_voice_input(request: VoiceInputRequest):
+    """Convert voice input to text, then process as chatbot question"""
+    try:
+        import base64
+        import tempfile
+        import wave
+        
+        # Decode base64 audio
+        try:
+            audio_bytes = base64.b64decode(request.audio_data)
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"Invalid audio data: {str(e)}")
+        
+        # Save to temporary file
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp_file:
+            tmp_file.write(audio_bytes)
+            tmp_path = tmp_file.name
+        
+        # Try to use Whisper for speech-to-text (if available)
+        question_text = None
+        
+        try:
+            # Try OpenAI Whisper API
+            openai_key = os.getenv("OPENAI_API_KEY")
+            if openai_key:
+                from openai import AsyncOpenAI
+                client = AsyncOpenAI(api_key=openai_key)
+                with open(tmp_path, "rb") as audio_file:
+                    transcript = await client.audio.transcriptions.create(
+                        model="whisper-1",
+                        file=audio_file,
+                        language="en"
+                    )
+                    question_text = transcript.text
+        except Exception as e:
+            print(f"Whisper API error: {e}")
+        
+        # Fallback: Try local whisper if installed
+        if not question_text:
+            try:
+                import whisper
+                model = whisper.load_model("base")
+                result = model.transcribe(tmp_path)
+                question_text = result["text"]
+            except ImportError:
+                pass
+            except Exception as e:
+                print(f"Local Whisper error: {e}")
+        
+        # Clean up temp file
+        try:
+            os.unlink(tmp_path)
+        except:
+            pass
+        
+        if not question_text:
+            raise HTTPException(status_code=400, detail="Could not transcribe audio. Please ensure audio is in a supported format.")
+        
+        # Process as regular chatbot question
+        chat_request = ChatRequest(
+            question=question_text,
+            context=request.context,
+            use_voice=True  # Always return voice response for voice input
+        )
+        
+        return await chatbot_ask(chat_request)
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Voice input error: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Voice processing error: {str(e)}")
 
 
 if __name__ == "__main__":

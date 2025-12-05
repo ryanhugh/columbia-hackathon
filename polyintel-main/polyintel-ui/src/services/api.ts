@@ -127,6 +127,24 @@ class APIService {
     return response.data;
   }
 
+  // Chatbot Endpoints
+  async askChatbot(question: string, context?: any, useVoice?: boolean): Promise<any> {
+    const response = await apiClient.post('/chatbot/ask', {
+      question,
+      context,
+      use_voice: useVoice || false,
+    });
+    return response.data;
+  }
+
+  async sendVoiceMessage(audioData: string, context?: any): Promise<any> {
+    const response = await apiClient.post('/chatbot/voice-input', {
+      audio_data: audioData,
+      context,
+    });
+    return response.data;
+  }
+
   // Error handler
   getErrorMessage(error: any): string {
     if (error.response?.data?.detail) {
